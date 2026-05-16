@@ -32,7 +32,10 @@ Use the source project if you want to edit or run the app locally. Use the stati
 - Built for game/simulation use only.
 - Not for real-world aviation operations.
 - Flight strips and form state are kept within the current app session and reset on full page refresh.
-
+- 
+## License
+- Non-commercial, source-available. See LICENSE.md for details.
+  
 ## Credits
 
 ATC Tools by Buckers.
