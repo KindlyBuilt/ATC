@@ -1,20 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { copyToClipboard } from '@/lib/clipboard';
 import { spokenCallsign } from '@/data/airlines';
 import { DEFAULT_AIRPORTS } from '@/data/airports';
 import { randomSquawk } from '@/lib/squawk';
+import { useAppState } from '@/lib/appState';
+import { SectionCard } from '@/components/SectionCard';
 import type { AtisContext } from '@/components/AtisGenerator';
 import type { GeneratedSid } from '@/components/SidGenerator';
 import type { StatusValue, Strip } from '@/pages/Strips';
-import { MessageSquareText, Copy, Sparkles } from 'lucide-react';
+import { MessageSquareText, Copy, Sparkles, ChevronDown } from 'lucide-react';
 
 const SQUAWKS = ['RANDOM', '1200', '2000', '7000'];
 const DEST_VALUE = 'DEST';
@@ -32,17 +37,47 @@ interface PhraseGeneratorProps {
   generatedSid?: GeneratedSid;
   onCreateStrip: (strip: Strip) => void;
   onUpdateStripStatus: (callsign: string, status: StatusValue) => boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  editMode?: boolean;
+  onDelete?: () => void;
+  dragHandleProps?: Record<string, unknown>;
 }
 
-export function PhraseGenerator({ atisContext, generatedSid, onCreateStrip, onUpdateStripStatus }: PhraseGeneratorProps) {
+export function PhraseGenerator({
+  atisContext, generatedSid, onCreateStrip, onUpdateStripStatus,
+  open: openProp, onOpenChange, editMode, onDelete, dragHandleProps,
+}: PhraseGeneratorProps) {
   const { toast } = useToast();
+  const { savedCallsigns, addSavedCallsign } = useAppState();
   const [callsign, setCallsign] = useState('');
-  const [savedCallsigns, setSavedCallsigns] = useState<string[]>([]);
+  const [internalOpen, setInternalOpen] = useState(true);
+  // Coloured text applies to EVERY copy output below. Ticked by default.
+  const [coloured, setColoured] = useState(true);
+  const open = openProp ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
 
   const spoken = useMemo(() => fmtCallsign(callsign), [callsign]);
+  // Output callsign is the RAW callsign entered/saved (not the spoken form).
+  const displayCs = useMemo(() => (callsign.trim().toUpperCase() || 'Aircraft'), [callsign]);
+
+  // Build the final clipboard string. Generators produce body text that starts
+  // with the (raw) callsign followed by ", ...". When coloured is on we split
+  // that leading callsign out and wrap as: "/atc ^8 CALLSIGN ^4 rest". When off
+  // we keep the existing "/atc" prefix with no colour codes.
+  function buildCopyText(text: string): string {
+    if (!coloured) return `/atc ${text}`;
+    const cs = displayCs;
+    // Strip a leading "CALLSIGN, " (or "CALLSIGN ") so we don't duplicate it.
+    let rest = text;
+    if (text.toUpperCase().startsWith(cs.toUpperCase())) {
+      rest = text.slice(cs.length).replace(/^[,\s]+/, '');
+    }
+    return `/atc ^8 ${cs} ^4 ${rest}`;
+  }
 
   async function copyLine(label: string, text: string, stripStatus?: StatusValue) {
-    const copiedText = `/ATC ${text}`;
+    const copiedText = buildCopyText(text);
     const stripUpdated = stripStatus ? onUpdateStripStatus(callsign, stripStatus) : false;
     const ok = await copyToClipboard(copiedText);
     toast({
@@ -60,21 +95,24 @@ export function PhraseGenerator({ atisContext, generatedSid, onCreateStrip, onUp
       toast({ title: 'Callsign required', description: 'Type a callsign before saving it.', variant: 'destructive' });
       return;
     }
-    setSavedCallsigns((items) => (items.includes(trimmed) ? items : [...items, trimmed]));
+    addSavedCallsign(trimmed);
     setCallsign('');
     toast({ title: 'Callsign saved', description: `${trimmed} is ready as a quick-select button.` });
   }
 
   return (
-    <Card data-testid="card-phrases">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <MessageSquareText className="h-4 w-4 text-primary" />
-          Text Phrase Generator
-        </CardTitle>
-        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">For text-mode pilots</span>
-      </CardHeader>
-      <CardContent className="grid gap-4">
+    <SectionCard
+      title="Text Phrase Generator"
+      icon={<MessageSquareText className="h-4 w-4 text-primary" />}
+      hint="For text-mode pilots"
+      open={open}
+      onOpenChange={setOpen}
+      testId="card-phrases"
+      editMode={editMode}
+      onDelete={onDelete}
+      dragHandleProps={dragHandleProps}
+    >
+      <div className="grid gap-4">
         <div className="grid gap-2">
           <Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Aircraft callsign</Label>
           <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
@@ -108,42 +146,64 @@ export function PhraseGenerator({ atisContext, generatedSid, onCreateStrip, onUp
               ))}
             </div>
           )}
+          {/* Coloured text toggle — applies to every copy output below. */}
+          <label className="flex cursor-pointer items-center gap-2 text-sm" data-testid="checkbox-phrase-coloured-label">
+            <Checkbox checked={coloured} onCheckedChange={(c) => setColoured(!!c)} data-testid="checkbox-phrase-coloured" />
+            Coloured text
+          </label>
         </div>
 
         <IfrClearance
           callsign={callsign}
           spoken={spoken}
+          displayCs={displayCs}
           atisContext={atisContext}
           generatedSid={generatedSid}
           onCopy={copyLine}
           onCreateStrip={onCreateStrip}
         />
-        <Pushback callsign={callsign} spoken={spoken} onCopy={copyLine} />
-        <Taxi callsign={callsign} spoken={spoken} onCopy={copyLine} />
-        <Takeoff callsign={callsign} spoken={spoken} atisContext={atisContext} onCopy={copyLine} />
-        <Descend callsign={callsign} spoken={spoken} atisContext={atisContext} onCopy={copyLine} />
-        <RadarVectors callsign={callsign} spoken={spoken} onCopy={copyLine} />
-        <Approach callsign={callsign} spoken={spoken} onCopy={copyLine} />
-        <Landing callsign={callsign} spoken={spoken} atisContext={atisContext} onCopy={copyLine} />
-      </CardContent>
-    </Card>
+        <FreeText callsign={callsign} spoken={spoken} displayCs={displayCs} coloured={coloured} onCopy={copyLine} />
+        <Pushback callsign={callsign} spoken={spoken} displayCs={displayCs} onCopy={copyLine} />
+        <Taxi callsign={callsign} spoken={spoken} displayCs={displayCs} onCopy={copyLine} />
+        <Takeoff callsign={callsign} spoken={spoken} displayCs={displayCs} atisContext={atisContext} onCopy={copyLine} />
+        <Descend callsign={callsign} spoken={spoken} displayCs={displayCs} atisContext={atisContext} onCopy={copyLine} />
+        <RadarVectors callsign={callsign} spoken={spoken} displayCs={displayCs} onCopy={copyLine} />
+        <Approach callsign={callsign} spoken={spoken} displayCs={displayCs} onCopy={copyLine} />
+        <Landing callsign={callsign} spoken={spoken} displayCs={displayCs} atisContext={atisContext} onCopy={copyLine} />
+      </div>
+    </SectionCard>
   );
 }
 
 interface SubProps extends Common {
   spoken: string;
+  displayCs: string; // raw callsign used in OUTPUT text (not the spoken form)
   onCopy: (label: string, text: string, stripStatus?: StatusValue) => void;
   atisContext?: AtisContext;
   generatedSid?: GeneratedSid;
   onCreateStrip?: (strip: Strip) => void;
 }
 
+// Each phraseology subsection is independently collapsible (expanded on first
+// load). Collapsing materially reduces vertical space.
 function Subsection({ title, children }: { title: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(true);
   return (
-    <section className="rounded-md border border-border bg-secondary/30 p-3">
-      <h3 className="mb-2 font-mono text-[11px] uppercase tracking-[0.18em] text-primary/90">{title}</h3>
-      {children}
-    </section>
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <section className="rounded-md border border-border bg-secondary/30 p-3">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="mb-2 flex w-full items-center justify-between font-mono text-[11px] uppercase tracking-[0.18em] text-primary/90"
+            data-testid={`toggle-phrase-${title.toLowerCase().replace(/[^a-z]+/g, '-')}`}
+          >
+            <span>{title}</span>
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>{children}</CollapsibleContent>
+      </section>
+    </Collapsible>
   );
 }
 
@@ -211,13 +271,17 @@ function facilityLabel(atisContext?: AtisContext): string {
 type SidMode = 'generated' | 'direct' | 'rv' | 'other';
 const GENERATED_MODE: SidMode = 'generated';
 
-function IfrClearance({ callsign, spoken, atisContext, generatedSid, onCopy, onCreateStrip }: SubProps) {
+function IfrClearance({ callsign, displayCs, atisContext, generatedSid, onCopy, onCreateStrip }: SubProps) {
+  const { atisViewer } = useAppState();
   const [dep, setDep] = useState('KLSX');
   const [arr, setArr] = useState(DEST_VALUE);
   const [sidMode, setSidMode] = useState<SidMode>('other');
   const [sidInput, setSidInput] = useState('');
   const [sq, setSq] = useState(SQUAWKS[0]);
   const [randomSq, setRandomSq] = useState(() => randomSquawk());
+  // SID Routing ticked (default) keeps the SID-mode behaviour. Unticked, the
+  // clearance behaves like "Other" but WITHOUT "climb via SID" — just "as filed".
+  const [sidRouting, setSidRouting] = useState(true);
 
   const generatedSidName = generatedSid?.sid.name?.toUpperCase() ?? '';
   const hasGenerated = Boolean(generatedSidName);
@@ -229,24 +293,38 @@ function IfrClearance({ callsign, spoken, atisContext, generatedSid, onCopy, onC
     setSidMode('generated');
   }, [generatedSid]);
 
+  // ATC station/facility name is intentionally NOT included in the IFR output.
+  // Information letter + altimeter (auto-filled from Mass ATIS / Detailed ATIS)
+  // are kept when available.
+  // Mass ATIS has priority for the selected departure airport. Detailed ATIS is
+  // only used when it matches the same airport and no Mass ATIS entry exists.
+  const massAtis = atisViewer.find((e) => e.icao === dep);
+  const detailAtis = atisContext?.airportIcao === dep ? atisContext : undefined;
+  const effectiveAtis = massAtis
+    ? { letter: massAtis.letter, qnh: massAtis.qnh }
+    : detailAtis
+      ? { letter: detailAtis.letter, qnh: detailAtis.qnh }
+      : undefined;
+
   const atisParts = [
-    atisContext?.airportIcao && atisContext?.station
-      ? `${atisContext.airportIcao} ${stationAbbrev(atisContext.station)}`
-      : '',
-    atisContext?.letter ? `Information ${atisContext.letter}` : '',
-    atisContext?.qnh
-      ? (/qnh|altimeter/i.test(atisContext.qnh) ? atisContext.qnh : `Altimeter ${atisContext.qnh}`)
+    effectiveAtis?.letter ? `Information ${effectiveAtis.letter}` : '',
+    effectiveAtis?.qnh
+      ? (/qnh|altimeter/i.test(effectiveAtis.qnh) ? effectiveAtis.qnh : `Altimeter ${effectiveAtis.qnh}`)
       : '',
   ].filter(Boolean);
-  const prefix = [spoken, ...atisParts].filter(Boolean).join(', ');
+  const prefix = [displayCs, ...atisParts].filter(Boolean).join(', ');
   const arrivalText = arr === DEST_VALUE ? 'destination' : arr;
   const squawkText = sq === 'RANDOM' ? randomSq : sq;
 
-  // Build clearance text based on SID mode.
+  // Build clearance text based on SID mode (or the no-SID-routing variant).
   const cleanedInput = sidInput.trim().toUpperCase();
   let body = '';
   let stripSid = '—';
-  if (sidMode === 'generated') {
+  if (!sidRouting) {
+    // No SID routing: behave like "Other" but without "climb via SID".
+    body = `cleared to ${arrivalText}, as filed, squawk ${squawkText}`;
+    stripSid = 'AS FILED';
+  } else if (sidMode === 'generated') {
     if (hasGenerated) {
       body = `cleared to ${arrivalText} via the ${generatedSidName} departure, climb via SID, squawk ${squawkText}`;
       stripSid = generatedSidName;
@@ -305,7 +383,11 @@ function IfrClearance({ callsign, spoken, atisContext, generatedSid, onCopy, onC
 
   return (
     <Subsection title="IFR Clearance">
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,0.85fr)]">
+      <label className="mb-2 flex w-max cursor-pointer items-center gap-2 text-sm" data-testid="checkbox-ifr-sidrouting-label">
+        <Checkbox checked={sidRouting} onCheckedChange={(c) => setSidRouting(!!c)} data-testid="checkbox-ifr-sidrouting" />
+        SID Routing
+      </label>
+      <div className={`grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,0.85fr)] ${sidRouting ? '' : ''}`}>
         <Field label="Departing ICAO">
           <Select value={dep} onValueChange={setDep}>
             <SelectTrigger data-testid="select-ifr-dep"><SelectValue /></SelectTrigger>
@@ -315,8 +397,8 @@ function IfrClearance({ callsign, spoken, atisContext, generatedSid, onCopy, onC
           </Select>
         </Field>
         <Field label="SID mode">
-          <Select value={sidMode} onValueChange={(v) => setSidMode(v as SidMode)}>
-            <SelectTrigger data-testid="select-ifr-sid-mode"><SelectValue /></SelectTrigger>
+          <Select value={sidMode} onValueChange={(v) => setSidMode(v as SidMode)} disabled={!sidRouting}>
+            <SelectTrigger data-testid="select-ifr-sid-mode" className={sidRouting ? '' : 'opacity-50'}><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value={GENERATED_MODE} data-testid="option-ifr-sid-generated">
                 {hasGenerated ? (
@@ -336,7 +418,9 @@ function IfrClearance({ callsign, spoken, atisContext, generatedSid, onCopy, onC
           </Select>
         </Field>
         <Field label={sidMode === 'generated' ? 'Generated SID' : (inputHint || 'Input')}>
-          {sidMode === 'generated' ? (
+          {!sidRouting ? (
+            <div className="flex h-10 items-center rounded-md border border-dashed border-border bg-secondary/30 px-3 text-xs text-muted-foreground" data-testid="text-ifr-sid-disabled">SID routing off — "as filed"</div>
+          ) : sidMode === 'generated' ? (
             <div
               className={`flex h-10 items-center gap-2 rounded-md border px-3 font-mono text-sm ${
                 hasGenerated
@@ -396,10 +480,39 @@ function IfrClearance({ callsign, spoken, atisContext, generatedSid, onCopy, onC
   );
 }
 
-function Pushback({ spoken, onCopy }: SubProps) {
+// Free text phrase. One input; output = the selected callsign followed by the
+// free text. When coloured is on the parent wraps it as "/atc ^8 CS ^4 ...";
+// for the free-text body we additionally tint it ^5 so it reads
+// "/atc ^8 CS ^4 ^5 free text". When off, plain "/atc CS free text".
+function FreeText({ displayCs, coloured, onCopy }: SubProps & { coloured: boolean }) {
+  const [free, setFree] = useState('');
+  const aircraft = displayCs;
+  const bodyText = free.trim();
+  // Preview shows what the message reads as; the ^5 colour code is added only
+  // when coloured is enabled (the parent adds the /atc ^8 ^4 wrapper).
+  const previewBody = bodyText || '<free text>';
+  const text = coloured
+    ? `${aircraft}, ^5 ${previewBody}`
+    : `${aircraft}, ${previewBody}`;
+  return (
+    <Subsection title="Free text">
+      <Field label="Free text">
+        <Input
+          value={free}
+          onChange={(e) => setFree(e.target.value)}
+          placeholder="Type any free text message…"
+          data-testid="input-freetext"
+        />
+      </Field>
+      <GenerateBar preview={text} testId="button-copy-freetext" onClick={() => onCopy('Free text', text)} />
+    </Subsection>
+  );
+}
+
+function Pushback({ displayCs, onCopy }: SubProps) {
   const [tw, setTw] = useState('');
   const [face, setFace] = useState<typeof FACE_DIRS[number]>('North');
-  const aircraft = spoken || 'Aircraft';
+  const aircraft = displayCs;
   const taxiway = tw.trim().toUpperCase() || '--';
   const text = face === 'Straight'
     ? `${aircraft}, pushback approved onto taxiway ${taxiway}, push straight.`
@@ -428,11 +541,11 @@ function Pushback({ spoken, onCopy }: SubProps) {
   );
 }
 
-function Taxi({ spoken, onCopy }: SubProps) {
+function Taxi({ displayCs, onCopy }: SubProps) {
   const [rwy, setRwy] = useState('');
   const [hold, setHold] = useState('');
   const [via, setVia] = useState('');
-  const aircraft = spoken || 'Aircraft';
+  const aircraft = displayCs;
   const rwyText = rwy.trim().toUpperCase() || '--';
   const holdText = hold.trim().toUpperCase() || '--';
   const viaText = via.trim().toUpperCase() || '--';
@@ -473,9 +586,9 @@ function Taxi({ spoken, onCopy }: SubProps) {
   );
 }
 
-function Takeoff({ spoken, atisContext, onCopy }: SubProps) {
+function Takeoff({ displayCs, atisContext, onCopy }: SubProps) {
   const [rwy, setRwy] = useState('');
-  const aircraft = spoken || 'Aircraft';
+  const aircraft = displayCs;
   const rwyText = rwy.trim().toUpperCase() || '--';
   const text = `${aircraft}, ${windPhrase(atisContext)}Runway ${rwyText}, Cleared for takeoff.`;
   return (
@@ -494,20 +607,18 @@ function Takeoff({ spoken, atisContext, onCopy }: SubProps) {
   );
 }
 
-function Descend({ spoken, atisContext, onCopy }: SubProps) {
+function Descend({ displayCs, atisContext, onCopy }: SubProps) {
   const [mode, setMode] = useState<'discretion' | 'star'>('discretion');
   const [approachType, setApproachType] = useState<'Visual' | 'ILS'>('Visual');
   const [rwy, setRwy] = useState('');
-  const aircraft = spoken || 'Aircraft';
-  const facility = facilityLabel(atisContext);
-  const facilityText = facility ? `, ${facility}` : '';
+  const aircraft = displayCs;
   const descendText = mode === 'star' ? 'Descend via the STAR' : 'Descend at your discretion';
   const runwayText = rwy.trim().toUpperCase();
   const approachPhrase = approachType === 'ILS' ? 'ILS' : 'visual';
   const approachText = runwayText
     ? `Expect Radar Vectors for ${approachPhrase} approach runway ${runwayText}`
     : `Expect Radar Vectors for ${approachPhrase} approach`;
-  const text = `${aircraft}${facilityText}, ${descendText}, ${approachText}.`;
+  const text = `${aircraft}, ${descendText}, ${approachText}.`;
 
   return (
     <Subsection title="Descend">
@@ -555,11 +666,11 @@ function formatAltitude(raw: string): string {
   return /^\d+$/.test(value) ? `${value}ft` : value;
 }
 
-function RadarVectors({ spoken, onCopy }: SubProps) {
+function RadarVectors({ displayCs, onCopy }: SubProps) {
   const [turn, setTurn] = useState<'left' | 'right'>('left');
   const [heading, setHeading] = useState('');
   const [altitude, setAltitude] = useState('');
-  const aircraft = spoken || 'Aircraft';
+  const aircraft = displayCs;
   const headingText = heading.trim();
   const altitudeText = formatAltitude(altitude);
   let instruction = '';
@@ -612,10 +723,10 @@ function RadarVectors({ spoken, onCopy }: SubProps) {
   );
 }
 
-function Approach({ spoken, onCopy }: SubProps) {
+function Approach({ displayCs, onCopy }: SubProps) {
   const [approachType, setApproachType] = useState<'Visual' | 'ILS'>('ILS');
   const [rwy, setRwy] = useState('');
-  const aircraft = spoken || 'Aircraft';
+  const aircraft = displayCs;
   const runwayText = rwy.trim().toUpperCase();
   const approachPhrase = approachType === 'ILS' ? 'ILS' : 'visual';
   const reportText = approachType === 'ILS' ? 'Report Established' : 'Report field in sight';
@@ -656,9 +767,9 @@ function Approach({ spoken, onCopy }: SubProps) {
   );
 }
 
-function Landing({ spoken, atisContext, onCopy }: SubProps) {
+function Landing({ displayCs, atisContext, onCopy }: SubProps) {
   const [rwy, setRwy] = useState('');
-  const aircraft = spoken || 'Aircraft';
+  const aircraft = displayCs;
   const rwyText = rwy.trim().toUpperCase() || '--';
   const text = `${aircraft}, ${windPhrase(atisContext)}Runway ${rwyText}, Cleared to land.`;
   return (

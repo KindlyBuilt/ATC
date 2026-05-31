@@ -598,6 +598,7 @@ export const AIRLINES: Record<string, AirlineEntry> = {
   "PBA": {"name":"PB Air","callsign":"Peebee Air","country":"Thailand"},
   "PBD": {"name":"Pobeda","callsign":"Pobeda","country":"Russia"},
   "PCO": {"name":"Pacific Coastal Airline","callsign":"Pasco","country":"Canada"},
+  "PD": {"name":"Porter Airlines","callsign":"Porter","country":"Canada"},
   "PDC": {"name":"Potomac Air","callsign":"District","country":"United States"},
   "PDT": {"name":"Piedmont Airlines (1948-1989)","callsign":"Piedmont","country":"United States"},
   "PEC": {"name":"Pacific East Asia Cargo Airlines","callsign":"Pac-East Cargo","country":"Philippines"},

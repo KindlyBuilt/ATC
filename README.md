@@ -1,34 +1,54 @@
-# ATC
+# ATC Tools
+
 SAFS/FiveM air traffic control helper for ATC controllers on FiveM servers
 
-## Live client version: http://buckers.online
+ATC Tools helps controllers quickly generate realistic controller text for text-pilots, digital ATIS messages, airline spoken callsigns, and session flight strips without leaving the browser.
 
 ## Features
 
 - FAA-style digital ATIS generator with airport, station, weather, runway, cloud, QNH/altimeter, and NOTAM fields.
-- Airline/callsign lookup using OpenFlights
-- SID Calculator for IFR clearances
+- Airline lookup using a local OpenFlights-derived ICAO/callsign dataset.
 - Text phrase generator for IFR clearance, pushback, taxi, takeoff, descent, radar vectors, approach, and landing.
 - Automatic `/ATC` copy formatting for generated messages.
 - Digital flight strips with status tracking, on-hold highlighting, spoken callsign detection, and quick deletion.
 - Session-preserved inputs while navigating between tools and flight strips.
 - Clean dark-mode interface designed for low-light controller use.
-- Run locally in browser
 
-## Planned Features
-- Flightstrip overhual (possibily synced)
-- Full route generater, from SID to STAR for both ATC and pilots.
-- Ingame Integration
-- Live map
-  
-## Run locally 
+## Run locally
 
-Install Node.js 20 or newer for the editable source project. 
-Hosting to a domain use Static Hosting zip.
+Install Node.js 20 or newer, then run:
+
+```bash
+npm install
+npm run dev
+```
+
+Open the local URL shown in the terminal, usually:
+
+```text
+http://localhost:5000
+```
+
+## Build for hosting
+
+```bash
+npm run build
+```
+
+Upload the contents of:
+
+```text
+dist/public
+```
+
+to your web host. The `index.html` file and `assets` folder must be in the same public/root folder.
 
 ## Downloads
 
-Zip ready download:
+Users can download ready-made zip files directly from this repository:
+
+- [Editable source project](https://github.com/buckers123/atc-tools/raw/main/downloads/atc-tools-source.zip)
+- [Static hosting build](https://github.com/buckers123/atc-tools/raw/main/downloads/atc-tools-static-build.zip)
 
 Use the source project if you want to edit or run the app locally. Use the static hosting build if you only want to upload the website files to a web host.
 
@@ -37,10 +57,7 @@ Use the source project if you want to edit or run the app locally. Use the stati
 - Built for game/simulation use only.
 - Not for real-world aviation operations.
 - Flight strips and form state are kept within the current app session and reset on full page refresh.
-- 
-## License
-- Non-commercial, source-available. See LICENSE.md for details.
-  
+
 ## Credits
 
 ATC Tools by Buckers.

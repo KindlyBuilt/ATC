@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {
@@ -9,15 +8,43 @@ import { DEFAULT_AIRPORTS } from '@/data/airports';
 import { getAltimeterSetting } from '@/data/altimeter';
 import { randomSquawk } from '@/lib/squawk';
 import { Gauge, RefreshCw } from 'lucide-react';
+import { SectionCard } from '@/components/SectionCard';
+import { useAppState } from '@/lib/appState';
 
 const AIRPORTS = DEFAULT_AIRPORTS.filter((a) => !a.notForAtis);
 
-export function AirportSettings() {
+interface AirportSettingsProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  editMode?: boolean;
+  onDelete?: () => void;
+  dragHandleProps?: Record<string, unknown>;
+}
+
+export function AirportSettings({ open: openProp, onOpenChange, editMode, onDelete, dragHandleProps }: AirportSettingsProps = {}) {
+  const { atisViewer } = useAppState();
+  const [internalOpen, setInternalOpen] = useState(true);
+  const open = openProp ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
   const [airport, setAirport] = useState('KLSX');
   const [squawk, setSquawk] = useState(() => randomSquawk());
   const [history, setHistory] = useState<string[]>([]);
 
   const altimeter = useMemo(() => getAltimeterSetting(airport), [airport]);
+  const liveAtis = useMemo(() => atisViewer.find((e) => e.icao === airport), [atisViewer, airport]);
+  const roundedWind = useMemo(() => {
+    if (!liveAtis?.windDir || !liveAtis.windSpeed) return 'No Mass ATIS wind';
+    const dir = parseInt(liveAtis.windDir, 10);
+    const rounded = Number.isNaN(dir)
+      ? liveAtis.windDir
+      : (((Math.round(dir / 10) * 10) % 360 + 360) % 360).toString().padStart(3, '0');
+    return `${rounded}/${liveAtis.windSpeed}kt`;
+  }, [liveAtis]);
+  const runwayText = liveAtis
+    ? liveAtis.depRunway === liveAtis.arrRunway
+      ? `RWY ${liveAtis.depRunway}`
+      : `DEP ${liveAtis.depRunway} / ARR ${liveAtis.arrRunway}`
+    : 'No Mass ATIS runway';
 
   function reloadSquawk() {
     setHistory((items) => [squawk, ...items.filter((item) => item !== squawk)].slice(0, 5));
@@ -25,17 +52,17 @@ export function AirportSettings() {
   }
 
   return (
-    <Card data-testid="card-airport-settings">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Gauge className="h-4 w-4 text-primary" />
-          Airport Settings
-        </CardTitle>
-        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-          QNH & Squawk
-        </span>
-      </CardHeader>
-      <CardContent className="grid gap-3">
+    <SectionCard
+      title="Airport Information"
+      icon={<Gauge className="h-4 w-4 text-primary" />}
+      hint="ATIS · QNH · Squawk"
+      open={open}
+      onOpenChange={setOpen}
+      testId="card-airport-settings"
+      editMode={editMode}
+      onDelete={onDelete}
+      dragHandleProps={dragHandleProps}
+    >
         <div className="grid gap-1.5">
           <Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
             Airfield
@@ -55,12 +82,12 @@ export function AirportSettings() {
           </Select>
         </div>
 
-        <div className="rounded-md border border-border bg-background/60 p-3">
-          <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-            Altimeter / QNH
-          </div>
-          <div className="mt-1 font-mono text-sm font-semibold text-foreground" data-testid="text-settings-altimeter">
-            {altimeter || 'No value saved'}
+        <div className="grid gap-2 rounded-md border border-border bg-background/60 p-3 font-mono text-xs">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+            <Info label="ATIS" value={liveAtis ? `Info ${liveAtis.letter}` : 'No Mass ATIS'} testId="text-settings-atis-letter" />
+            <Info label="Wind" value={roundedWind} testId="text-settings-wind" />
+            <Info label="Runways" value={runwayText} testId="text-settings-runways" wide />
+            <Info label="Altimeter / QNH" value={liveAtis?.qnh || altimeter || 'No value saved'} testId="text-settings-altimeter" wide />
           </div>
         </div>
 
@@ -92,7 +119,15 @@ export function AirportSettings() {
             </div>
           )}
         </div>
-      </CardContent>
-    </Card>
+    </SectionCard>
+  );
+}
+
+function Info({ label, value, testId, wide }: { label: string; value: string; testId: string; wide?: boolean }) {
+  return (
+    <div className={`min-w-0 ${wide ? 'col-span-2' : ''}`}>
+      <div className="text-[9px] uppercase tracking-widest text-muted-foreground">{label}</div>
+      <div className="break-words font-semibold leading-snug text-foreground" data-testid={testId}>{value}</div>
+    </div>
   );
 }

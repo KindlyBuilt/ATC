@@ -1,0 +1,17 @@
+{
+  "_comment": "Optional runtime chart manifest. The Charts page currently uses the built-in manifest in client/src/data/charts.ts (the source of truth). A static site cannot enumerate folders at runtime, so to add charts you must (1) drop the image into /charts/<ICAO|GLOBAL>/ and (2) add a matching entry to charts.ts (and optionally mirror it here). Filename convention: <ICAO|Global>-<CATEGORY>-<DisplayName>.<ext>.",
+  "charts": [
+    { "airport": "GLOBAL", "category": "GEN", "name": "Navaids", "file": "./charts/GLOBAL/Global-GEN-Navaids.jpg" },
+    { "airport": "KLSX", "category": "GND", "name": "Ground Movement Chart", "file": "./charts/KLSX/KLSX-GND-Ground-Movement-Chart.jpg" },
+    { "airport": "KLSX", "category": "SID", "name": "JJAWS1", "file": "./charts/KLSX/KLSX-SID-JJAWS1.jpg" },
+    { "airport": "KLSX", "category": "SID", "name": "OILLL1", "file": "./charts/KLSX/KLSX-SID-OILLL1.jpg" },
+    { "airport": "KLSX", "category": "SID", "name": "VALEY1", "file": "./charts/KLSX/KLSX-SID-VALEY1.jpg" },
+    { "airport": "KLSX", "category": "STAR", "name": "STDUM1", "file": "./charts/KLSX/KLSX-STAR-STDUM1.jpg" },
+    { "airport": "KLSX", "category": "STAR", "name": "WINDD1", "file": "./charts/KLSX/KLSX-STAR-WINDD1.jpg" },
+    { "airport": "KMDW", "category": "GND", "name": "Ground Movement Chart", "file": "./charts/KMDW/KMDW-GND-Ground-Movement-Chart.jpg" },
+    { "airport": "KMDW", "category": "GND", "name": "Terminal Parking", "file": "./charts/KMDW/KMDW-GND-Ground-Termnal-Parking.jpg" },
+    { "airport": "KMDW", "category": "SID", "name": "BAGEL5", "file": "./charts/KMDW/KMDW-SID-BAGEL5.jpg" },
+    { "airport": "KMDW", "category": "SID", "name": "PMPKN3", "file": "./charts/KMDW/KMDW-SID-PMPKN3png.jpg" },
+    { "airport": "KMDW", "category": "SID", "name": "RAYNR7", "file": "./charts/KMDW/KMDW-SID-RAYNR7.jpg" }
+  ]
+}

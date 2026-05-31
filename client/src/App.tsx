@@ -9,8 +9,17 @@ import NotFound from '@/pages/not-found';
 import { Header } from '@/components/Header';
 import ToolsPage from '@/pages/Tools';
 import StripsPage, { type StatusValue, type Strip } from '@/pages/Strips';
+import PdcPage from '@/pages/Pdc';
+import ChartsPage from '@/pages/Charts';
+import MassAtisPage from '@/pages/MassAtis';
+import DatasetPage from '@/pages/Dataset';
 import type { AtisContext } from '@/components/AtisGenerator';
 import type { GeneratedSid } from '@/components/SidGenerator';
+import { AppStateProvider } from '@/lib/appState';
+
+// All known routes. Pages are kept mounted (hidden) so their state survives
+// navigation, matching the existing app pattern.
+const KNOWN_ROUTES = ['/', '/pdc', '/charts', '/mass-atis', '/strips', '/dataset'];
 
 function AppRouter() {
   const [location] = useLocation();
@@ -29,7 +38,7 @@ function AppRouter() {
     return true;
   }
 
-  if (location !== '/' && location !== '/strips') {
+  if (!KNOWN_ROUTES.includes(location)) {
     return <NotFound />;
   }
 
@@ -45,12 +54,24 @@ function AppRouter() {
           onUpdateStripStatus={updateStripStatus}
         />
       </section>
+      <section hidden={location !== '/pdc'} aria-hidden={location !== '/pdc'}>
+        <PdcPage />
+      </section>
+      <section hidden={location !== '/charts'} aria-hidden={location !== '/charts'}>
+        <ChartsPage />
+      </section>
+      <section hidden={location !== '/mass-atis'} aria-hidden={location !== '/mass-atis'}>
+        <MassAtisPage />
+      </section>
       <section hidden={location !== '/strips'} aria-hidden={location !== '/strips'}>
         <StripsPage
           strips={strips}
           onStripsChange={setStrips}
           generatedSid={generatedSid}
         />
+      </section>
+      <section hidden={location !== '/dataset'} aria-hidden={location !== '/dataset'}>
+        <DatasetPage />
       </section>
     </>
   );
@@ -60,23 +81,25 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <Router hook={useHashLocation}>
-          <div className="min-h-dvh">
-            <Header />
-            <main>
-              <AppRouter />
-            </main>
-            <footer className="mx-auto max-w-7xl px-4 py-8 text-center text-[11px] leading-relaxed text-muted-foreground sm:px-6">
-              <div className="font-medium text-foreground/80">
-                ATC Tools made by Kindly Built. Contact hello@kindlybuiltweb.com
-              </div>
-              <div>
-                Not for real-world Operations. AI used, no jobs lost. Copyright 2026 Kindly Built.
-              </div>
-            </footer>
-          </div>
-        </Router>
+        <AppStateProvider>
+          <Toaster />
+          <Router hook={useHashLocation}>
+            <div className="min-h-dvh">
+              <Header />
+              <main>
+                <AppRouter />
+              </main>
+              <footer className="mx-auto max-w-7xl px-4 py-8 text-center text-[11px] leading-relaxed text-muted-foreground sm:px-6">
+                <div className="font-medium text-foreground/80">
+                  ATC Tools made by Kindly Built. Contact hello@kindlybuiltweb.com
+                </div>
+                <div>
+                  Not for real-world Operations. AI used, no jobs lost. Copyright 2026 Kindly Built.
+                </div>
+              </footer>
+            </div>
+          </Router>
+        </AppStateProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

@@ -1,0 +1,3 @@
+{
+  "_comment": "Optional runtime data override. Generated/downloadable from the Dataset page (#/dataset). Upload an edited version here to persist data changes without rebuilding. The app can be wired to prefer this over built-in TS defaults at startup."
+}

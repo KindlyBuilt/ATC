@@ -1,11 +1,22 @@
 import { useMemo, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AIRLINES, lookupAirline, parseCallsign, spokenCallsign } from '@/data/airlines';
 import { Search, PlaneTakeoff } from 'lucide-react';
+import { SectionCard } from '@/components/SectionCard';
 
-export function AirlineLookup() {
+interface AirlineLookupProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  editMode?: boolean;
+  onDelete?: () => void;
+  dragHandleProps?: Record<string, unknown>;
+}
+
+export function AirlineLookup({ open: openProp, onOpenChange, editMode, onDelete, dragHandleProps }: AirlineLookupProps = {}) {
+  const [internalOpen, setInternalOpen] = useState(true);
+  const open = openProp ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
   const [q, setQ] = useState('');
   const trimmed = q.trim().toUpperCase();
 
@@ -26,15 +37,17 @@ export function AirlineLookup() {
   }, [trimmed]);
 
   return (
-    <Card data-testid="card-airline">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <PlaneTakeoff className="h-4 w-4 text-primary" />
-          Airline Lookup
-        </CardTitle>
-        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Beta, Source: Open Flight</span>
-      </CardHeader>
-      <CardContent className="grid gap-3">
+    <SectionCard
+      title="Airline Lookup"
+      icon={<PlaneTakeoff className="h-4 w-4 text-primary" />}
+      hint="Beta, Source: Open Flight"
+      open={open}
+      onOpenChange={setOpen}
+      testId="card-airline"
+      editMode={editMode}
+      onDelete={onDelete}
+      dragHandleProps={dragHandleProps}
+    >
         <div className="grid gap-1.5">
           <Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
             Enter ICAO code, callsign, or full flight number
@@ -106,7 +119,6 @@ export function AirlineLookup() {
             </ul>
           </div>
         )}
-      </CardContent>
-    </Card>
+    </SectionCard>
   );
 }
