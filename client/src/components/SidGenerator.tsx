@@ -17,11 +17,6 @@ const CHART_W = 2000;
 const CHART_H = 1719;
 const CHART_SRC = './SAFS_Navaids.jpeg';
 
-const AIRPORTS_WITH_RUNWAYS = DEFAULT_AIRPORTS.filter(
-  (a) => !a.notForAtis && getRunways(a.icao).length > 0,
-);
-const AIRPORTS_FOR_ARRIVAL = DEFAULT_AIRPORTS.filter((a) => !a.notForAtis);
-
 export interface GeneratedSid {
   departure: string;
   runway: string;
@@ -60,6 +55,14 @@ export function SidGenerator({
   const [showImage, setShowImage] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  const airportsWithRunways = useMemo(
+    () => DEFAULT_AIRPORTS.filter((a) => !a.notForAtis && getRunways(a.icao).length > 0),
+    [],
+  );
+  const airportsForArrival = useMemo(
+    () => DEFAULT_AIRPORTS.filter((a) => !a.notForAtis),
+    [],
+  );
   const runways = useMemo(() => (dep ? getRunways(dep) : []), [dep]);
 
   // When a departure is chosen, prefer the synced runway default (normalized
@@ -106,7 +109,7 @@ export function SidGenerator({
     setDep('');
     setRunway('');
     setArr(NONE);
-    setShowImage(true);
+    setShowImage(false);
     onGeneratedChange(undefined);
     setMessage(null);
   }
@@ -148,7 +151,7 @@ export function SidGenerator({
               <SelectTrigger data-testid="select-sid-dep"><SelectValue placeholder="Select departure" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value={NONE} disabled>Select departure</SelectItem>
-                {AIRPORTS_WITH_RUNWAYS.map((a) => (
+                {airportsWithRunways.map((a) => (
                   <SelectItem key={a.icao} value={a.icao} data-testid={`option-sid-dep-${a.icao}`}>
                     <span className="font-mono">{a.icao}</span>{' '}
                     <span className="text-muted-foreground">{a.name}</span>
@@ -177,7 +180,7 @@ export function SidGenerator({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={NONE}>None (optional)</SelectItem>
-                {AIRPORTS_FOR_ARRIVAL.map((a) => (
+                {airportsForArrival.map((a) => (
                   <SelectItem key={a.icao} value={a.icao} data-testid={`option-sid-arr-${a.icao}`}>
                     <span className="font-mono">{a.icao}</span>{' '}
                     <span className="text-muted-foreground">{a.name}</span>

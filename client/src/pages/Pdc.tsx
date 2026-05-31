@@ -33,9 +33,6 @@ const CHART_W = 2000;
 const CHART_H = 1719;
 const CHART_SRC = './SAFS_Navaids.jpeg';
 
-const DEP_AIRPORTS = DEFAULT_AIRPORTS.filter((a) => !a.notForAtis && getAtisRunways(a.icao).length > 0);
-const ARR_AIRPORTS = DEFAULT_AIRPORTS.filter((a) => !a.notForAtis);
-
 export default function PdcPage() {
   const { toast } = useToast();
   const { savedCallsigns, addSavedCallsign, getRunwayPref, noteAircraftFromCopy } = useAppState();
@@ -51,6 +48,14 @@ export default function PdcPage() {
   // exact copied text into the aircraft's Notes block (see noteAircraftFromCopy).
   const [addToNotes, setAddToNotes] = useState(true);
 
+  const depAirports = useMemo(
+    () => DEFAULT_AIRPORTS.filter((a) => !a.notForAtis && getAtisRunways(a.icao).length > 0),
+    [],
+  );
+  const arrAirports = useMemo(
+    () => DEFAULT_AIRPORTS.filter((a) => !a.notForAtis),
+    [],
+  );
   const depRunways = useMemo(() => getAtisRunways(dep), [dep]);
   const arrRunways = useMemo(() => getAtisRunways(arr), [arr]);
 
@@ -218,7 +223,7 @@ export default function PdcPage() {
               <Field label="Departure airport">
                 <Select value={dep} onValueChange={setDep}>
                   <SelectTrigger data-testid="select-pdc-dep"><SelectValue /></SelectTrigger>
-                  <SelectContent>{DEP_AIRPORTS.map((a) => <SelectItem key={a.icao} value={a.icao}>{a.icao} {a.name}</SelectItem>)}</SelectContent>
+                  <SelectContent>{depAirports.map((a) => <SelectItem key={a.icao} value={a.icao}>{a.icao} {a.name}</SelectItem>)}</SelectContent>
                 </Select>
               </Field>
               <Field label="Departure runway">
@@ -233,7 +238,7 @@ export default function PdcPage() {
               <Field label="Arrival airport">
                 <Select value={arr} onValueChange={setArr}>
                   <SelectTrigger data-testid="select-pdc-arr"><SelectValue /></SelectTrigger>
-                  <SelectContent>{ARR_AIRPORTS.map((a) => <SelectItem key={a.icao} value={a.icao}>{a.icao} {a.name}</SelectItem>)}</SelectContent>
+                  <SelectContent>{arrAirports.map((a) => <SelectItem key={a.icao} value={a.icao}>{a.icao} {a.name}</SelectItem>)}</SelectContent>
                 </Select>
               </Field>
               <Field label="Arrival runway">

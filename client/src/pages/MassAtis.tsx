@@ -27,7 +27,6 @@ import {
 } from '@/lib/massAtis';
 import { Radio, Copy, Play, RefreshCw, Timer, ChevronDown, Check } from 'lucide-react';
 
-const ATIS_AIRPORTS = DEFAULT_AIRPORTS.filter((a) => !a.notForAtis);
 const NONE = '__none__';
 const UPDATE_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -48,6 +47,7 @@ export default function MassAtisPage() {
   const [hasGenerated, setHasGenerated] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const timerRef = useRef<number | null>(null);
+  const atisAirports = useMemo(() => DEFAULT_AIRPORTS.filter((a) => !a.notForAtis), []);
 
   function toggleAirport(icao: string) {
     setSelected((s) => {
@@ -62,7 +62,7 @@ export default function MassAtisPage() {
     if (key === NONE) return;
     const p = CENTER_PRESETS.find((x) => x.key === key);
     if (!p) return;
-    const airports = p.key === 'sa' ? ATIS_AIRPORTS.map((a) => a.icao) : p.airports;
+    const airports = p.key === 'sa' ? atisAirports.map((a) => a.icao) : p.airports;
     setSelected(new Set(airports));
     setContactLine(p.contact);
   }
@@ -186,7 +186,7 @@ export default function MassAtisPage() {
             </div>
             <CollapsibleContent>
               <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-6">
-                {ATIS_AIRPORTS.map((a) => (
+                {atisAirports.map((a) => (
                   <label key={a.icao} className="flex cursor-pointer items-center gap-2 rounded border border-border bg-secondary/30 px-2 py-1.5 text-sm" data-testid={`checkbox-mass-${a.icao}`}>
                     <Checkbox checked={selected.has(a.icao)} onCheckedChange={() => toggleAirport(a.icao)} />
                     <span className="font-mono">{a.icao}</span>

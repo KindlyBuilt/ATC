@@ -75,7 +75,7 @@ export default function ToolsPage({
         </div>
 
         <div id="atis-viewer" className="scroll-mt-28 lg:col-span-12" data-testid="section-wrap-viewer">
-          <AtisViewer {...sectionProps('viewer')} />
+          <AtisViewer columns {...sectionProps('viewer')} />
         </div>
 
         <div id="text-generator" className="scroll-mt-28 lg:col-span-12" data-testid="section-wrap-phrases">

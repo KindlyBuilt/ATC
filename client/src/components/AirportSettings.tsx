@@ -11,8 +11,6 @@ import { Gauge, RefreshCw } from 'lucide-react';
 import { SectionCard } from '@/components/SectionCard';
 import { useAppState } from '@/lib/appState';
 
-const AIRPORTS = DEFAULT_AIRPORTS.filter((a) => !a.notForAtis);
-
 interface AirportSettingsProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -30,6 +28,7 @@ export function AirportSettings({ open: openProp, onOpenChange, editMode, onDele
   const [squawk, setSquawk] = useState(() => randomSquawk());
   const [history, setHistory] = useState<string[]>([]);
 
+  const airports = useMemo(() => DEFAULT_AIRPORTS.filter((a) => !a.notForAtis), []);
   const altimeter = useMemo(() => getAltimeterSetting(airport), [airport]);
   const liveAtis = useMemo(() => atisViewer.find((e) => e.icao === airport), [atisViewer, airport]);
   const roundedWind = useMemo(() => {
@@ -72,7 +71,7 @@ export function AirportSettings({ open: openProp, onOpenChange, editMode, onDele
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {AIRPORTS.map((a) => (
+              {airports.map((a) => (
                 <SelectItem key={a.icao} value={a.icao} data-testid={`option-settings-airport-${a.icao}`}>
                   <span className="font-mono">{a.icao}</span>{' '}
                   <span className="text-muted-foreground">{a.name}</span>

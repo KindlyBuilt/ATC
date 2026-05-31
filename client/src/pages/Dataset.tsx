@@ -6,9 +6,8 @@
 // so we cannot regenerate the compiled app from edited source in-browser.
 // Instead this page exposes every data table as editable JSON, lets you
 // download individual JSON files and a combined runtime-data.json, which can be
-// uploaded to your web host / GitHub to persist changes. The app could be
-// extended to prefer an uploaded runtime-data.json over the built-in TS
-// defaults at startup (see loadRuntimeData note below).
+// uploaded to your web host / GitHub to persist changes. At app startup,
+// /data/runtime-data.json is loaded first and overrides these bundled defaults.
 //
 // To add a new data file: add an entry to DATASETS with its JSON serialiser.
 import { useMemo, useState } from 'react';
@@ -27,7 +26,7 @@ import { SIDS } from '@/data/sids';
 import { STARS } from '@/data/stars';
 import { WAYPOINTS } from '@/data/waypoints';
 import { CHART_MANIFEST } from '@/data/charts';
-import { Database, Download, RotateCcw, ChevronDown } from 'lucide-react';
+import { Database, Download, RotateCcw, ChevronDown, Upload } from 'lucide-react';
 
 interface DatasetDef {
   key: string;
@@ -66,6 +65,11 @@ export default function DatasetPage() {
     [],
   );
   const [values, setValues] = useState<Record<string, string>>(defaults);
+  const [runtimeEditor, setRuntimeEditor] = useState(() => JSON.stringify(
+    Object.fromEntries(DATASETS.map((d) => [d.key, d.data])),
+    null,
+    2,
+  ));
 
   function combinedJson(): string {
     const obj: Record<string, unknown> = {};
@@ -76,10 +80,46 @@ export default function DatasetPage() {
     return JSON.stringify(obj, null, 2);
   }
 
+  function applyRuntimeJson(text: string) {
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      toast({ title: 'Invalid runtime JSON', description: 'The uploaded/edited runtime-data.json is not valid JSON.', variant: 'destructive' });
+      return;
+    }
+
+    setValues((current) => {
+      const next = { ...current };
+      for (const d of DATASETS) {
+        if (Object.prototype.hasOwnProperty.call(parsed, d.key)) {
+          next[d.key] = JSON.stringify(parsed[d.key], null, 2);
+        }
+      }
+      return next;
+    });
+    setRuntimeEditor(JSON.stringify(parsed, null, 2));
+    toast({ title: 'Runtime data loaded', description: 'The runtime JSON has been applied to the editable dataset sections.' });
+  }
+
+  async function uploadRuntimeFile(file: File | null) {
+    if (!file) return;
+    applyRuntimeJson(await file.text());
+  }
+
   function downloadOne(key: string) {
     try { JSON.parse(values[key]); }
     catch { toast({ title: 'Invalid JSON', description: `${key} is not valid JSON.`, variant: 'destructive' }); return; }
     download(`${key}.json`, values[key]);
+  }
+
+  function resetAll() {
+    setValues(defaults);
+    setRuntimeEditor(JSON.stringify(
+      Object.fromEntries(DATASETS.map((d) => [d.key, d.data])),
+      null,
+      2,
+    ));
   }
 
   return (
@@ -98,7 +138,17 @@ export default function DatasetPage() {
         <Button onClick={() => download('runtime-data.json', combinedJson())} className="bg-emerald-500 text-emerald-950 hover:bg-emerald-400" data-testid="button-download-runtime">
           <Download className="mr-2 h-4 w-4" /> Download combined runtime-data.json
         </Button>
-        <Button variant="outline" onClick={() => setValues(defaults)} data-testid="button-reset-all">
+        <label className="inline-flex cursor-pointer items-center rounded-md border border-border bg-background px-3 py-2 text-sm font-medium transition-colors hover:bg-secondary" data-testid="label-upload-runtime">
+          <Upload className="mr-2 h-4 w-4" /> Upload current runtime-data.json
+          <input
+            type="file"
+            accept="application/json,.json"
+            className="sr-only"
+            onChange={(e) => uploadRuntimeFile(e.target.files?.[0] ?? null)}
+            data-testid="input-upload-runtime"
+          />
+        </label>
+        <Button variant="outline" onClick={resetAll} data-testid="button-reset-all">
           <RotateCcw className="mr-2 h-4 w-4" /> Reset all to defaults
         </Button>
       </div>
@@ -108,9 +158,37 @@ export default function DatasetPage() {
           <p>
             Static hosting cannot compile TypeScript/source in the browser, so there is no in-browser "rebuild app"
             download. The no-build path is the runtime JSON above: download <code>runtime-data.json</code> (or individual
-            files), commit them to your hosting/GitHub, and the app can be wired to prefer that JSON over the built-in
-            defaults on load. Each section below is prefilled with the current data and can be edited, downloaded, or reset.
+            files), upload it to <code>/data/runtime-data.json</code>, and the app will prefer it over the bundled defaults
+            on load. Each section below is prefilled with the current runtime/bundled data and can be edited, downloaded,
+            uploaded, or reset.
           </p>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-5" data-testid="card-runtime-json-editor">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Combined runtime-data.json editor</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          <p className="text-xs text-muted-foreground">
+            Use this when you already have a runtime-data.json from your static site. Upload it, edit it here if needed,
+            then apply it to the sections below or download it again.
+          </p>
+          <Textarea
+            value={runtimeEditor}
+            onChange={(e) => setRuntimeEditor(e.target.value)}
+            className="min-h-[260px] resize-y font-mono text-xs"
+            spellCheck={false}
+            data-testid="textarea-runtime-json"
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => applyRuntimeJson(runtimeEditor)} data-testid="button-apply-runtime-json">
+              Apply runtime JSON to editors
+            </Button>
+            <Button variant="outline" onClick={() => setRuntimeEditor(combinedJson())} data-testid="button-load-current-editors">
+              Load current section edits into this box
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
